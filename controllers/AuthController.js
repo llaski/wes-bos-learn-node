@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const promisify = require('es6-promisify')
+const passport = require('passport')
 
 const User = mongoose.model('User')
 
@@ -14,7 +15,15 @@ exports.registerForm = (req, res) => {
 exports.validateRegister = (req, res, next) => {
     req.sanitizeBody('name')
     req.checkBody('name', 'You must supply a name').notEmpty()
-    req.checkBody('email', 'That email is not valid').isEmail()
+    req.checkBody('email', 'That email is not valid')
+        .isEmail()
+        // .custom(async (value) => {
+        //     const user = await User.findOne({ email: value })
+        //     console.log(user)
+        //     if (user) {
+        //         throw new Error('This email is already in use.');
+        //     }
+        // })
     req.sanitizeBody('email').normalizeEmail({
         remove_dots: false,
         remove_extension: false,
@@ -35,13 +44,36 @@ exports.validateRegister = (req, res, next) => {
     next()
 }
 
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
     const user = new User({
         name: req.body.name,
         email: req.body.email
     })
+
     const register = promisify(User.register, User)
     await register(user, req.body.password)
+    next()
+}
 
-    res.render('auth/register', { title: 'Register' })
+exports.login = passport.authenticate('local', {
+    failureRedirect: '/login',
+    failureFlash: 'Failed login',
+    successRedirect: '/',
+    successFlash: 'You are now logged in'
+})
+
+exports.logout = async (req, res) => {
+    req.logout()
+    req.flash('success', 'You are now logged out.')
+    res.redirect('/')
+}
+
+exports.isLoggedIn = (req, res, next) => {
+    if (req.isAuthenticated()) {
+        next()
+        return
+    }
+
+    req.flash('error', 'You must be logged in to view that page.')
+    res.redirect('/login')
 }

@@ -17,13 +17,18 @@ const schema = new mongoose.Schema({
     },
     name: {
         type: String,
-        required: 'Please supply a name'
+        required: 'Please supply a name',
         trim: true
     },
     created: {
         type: Date,
         default: Date.now
     }
+})
+
+schema.virtual('gravatar').get(function() {
+    const hash = md5(this.email)
+    return `https://gravatar.com/avatar/${hash}?s=200`
 })
 
 schema.plugin(passportLocalMongoose, { usernameField: 'email' })
